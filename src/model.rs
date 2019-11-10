@@ -1,9 +1,4 @@
-use cursive::theme::Effect;
 use cursive::traits::*;
-use cursive::utils::markup::StyledString;
-use cursive::utils::span::SpannedString;
-use cursive::views::{EditView, TextView};
-use cursive::Cursive;
 use rand;
 use rand::seq::SliceRandom;
 use std::collections::VecDeque;
@@ -51,32 +46,13 @@ impl<'a> Model<'a> {
         slice.choose(&mut rng).unwrap()
     }
 
-    fn advance(&mut self) {
+    pub fn advance(&mut self) {
         self.words.push_back(self.sample());
         self.words.pop_front();
     }
 
-    pub fn on_edit(&mut self, s: &mut Cursive, contents: &str, _cursor: usize) {
-        let mut new_contents = contents;
-        if !contents.is_empty() {
-            let input: char = contents.chars().last().unwrap();
-            match input {
-                ' ' => {
-                    new_contents = "";
-                    self.advance();
-                }
-                _ => (),
-            }
-        }
-        s.call_on_id("performance", |view: &mut TextView| {
-            view.set_content(format!(".{}.", new_contents));
-        });
-        s.call_on_id("display", |view: &mut TextView| {
-            view.set_content(self.styled_string(new_contents));
-        });
-        s.call_on_id("entry", |view: &mut EditView| {
-            view.set_content(new_contents);
-        });
+    pub fn get_words(&self) -> VecDeque<&'a str> {
+        self.words.clone()
     }
 
     fn display_string(&self) -> String {
@@ -86,40 +62,4 @@ impl<'a> Model<'a> {
             .collect::<Vec<&str>>()
             .join(" ")
     }
-
-    pub fn styled_string(&self, entry: &str) -> StyledString {
-        let mut styled_string = SpannedString::new();
-        for i in 0..self.words.len() {
-            match i {
-                0 => {
-                    let (prefix, suffix) = common_prefix(
-                        &self.words.get(0).unwrap().to_string(),
-                        &entry.to_string(),
-                    );
-                    styled_string
-                        .append(SpannedString::styled(prefix, Effect::Simple));
-                    styled_string
-                        .append(SpannedString::styled(suffix, Effect::Reverse));
-                }
-                _ => {
-                    styled_string
-                        .append(self.words.get(i).unwrap().to_string());
-                }
-            }
-            styled_string.append(" ");
-        }
-        styled_string
-    }
-}
-
-fn common_prefix(s1: &String, s2: &String) -> (String, String) {
-    let len = s1
-        .chars()
-        .zip(s2.chars())
-        .take_while(|(x, y)| x == y)
-        .count();
-    (
-        s1[..len].chars().collect::<String>(),
-        s1[len..].chars().collect::<String>(),
-    )
 }
