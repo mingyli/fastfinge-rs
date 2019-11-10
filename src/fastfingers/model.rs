@@ -3,6 +3,7 @@ use rand;
 use rand::seq::SliceRandom;
 use std::collections::VecDeque;
 
+
 #[derive(Debug)]
 pub struct Model<'a> {
     lexicon: Vec<&'a str>,

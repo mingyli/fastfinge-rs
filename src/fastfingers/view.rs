@@ -4,7 +4,7 @@ use cursive::utils::span::SpannedString;
 use cursive::views::{EditView, TextView};
 use cursive::Cursive;
 
-use crate::model;
+use crate::fastfingers::model;
 
 pub fn refresh(model: &model::Model, siv: &mut Cursive, new_contents: &str) {
     siv.call_on_id("performance", |view: &mut TextView| {

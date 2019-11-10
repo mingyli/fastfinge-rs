@@ -1,7 +1,7 @@
 use cursive::Cursive;
 
-use crate::model;
-use crate::view;
+use crate::fastfingers::model;
+use crate::fastfingers::view;
 
 pub fn on_edit(
     model: &mut model::Model,
