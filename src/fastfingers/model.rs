@@ -1,66 +1,55 @@
 use cursive::traits::*;
-use rand;
-use rand::seq::SliceRandom;
-use std::collections::VecDeque;
 
+use crate::fastfingers::word_queue;
 
 #[derive(Debug)]
-pub struct Model<'a> {
-    lexicon: Vec<&'a str>,
-    words: VecDeque<&'a str>,
-    history: Vec<&'a str>,
+pub struct Model {
+    words: word_queue::WordQueue,
+    history: Vec<String>,
 }
 
-impl<'a> Model<'a> {
-    pub fn new() -> Model<'a> {
+impl Model {
+    pub fn new() -> Model {
         Model {
-            lexicon: Vec::new(),
-            words: VecDeque::new(),
+            words: word_queue::WordQueue::new(),
             history: Vec::new(),
         }
     }
 
-    pub fn with_lexicon(self, lexicon: Vec<&'a str>) -> Model<'a> {
+    pub fn with_lexicon(self, lexicon: &[String]) -> Model {
         self.with(|s| s.set_lexicon(lexicon))
     }
-    fn set_lexicon(&mut self, lexicon: Vec<&'a str>) {
-        self.lexicon = lexicon.clone()
+    fn set_lexicon(&mut self, lexicon: &[String]) {
+        self.words.set_lexicon(lexicon)
     }
 
-    pub fn with_size(self, size: usize) -> Model<'a> {
-        self.with(|s| s.set_size(size))
+    pub fn with_width(self, width: usize) -> Model {
+        self.with(|s| s.set_width(width))
     }
-    fn set_size(&mut self, size: usize) {
-        let mut rng = rand::thread_rng();
-        let slice = &self.lexicon[..];
-        self.words = VecDeque::from(
-            slice
-                .choose_multiple(&mut rng, size)
-                .cloned()
-                .collect::<Vec<&'a str>>(),
-        )
+    fn set_width(&mut self, width: usize) {
+        self.words.set_width(width)
+    }
+    pub fn width(&self) -> usize {
+        self.words.width()
     }
 
-    fn sample(&self) -> &'a str {
-        let mut rng = rand::thread_rng();
-        let slice = &self.lexicon[..];
-        slice.choose(&mut rng).unwrap()
+    pub fn position(&self) -> usize {
+        self.history.len()
     }
 
-    pub fn advance(&mut self) {
-        self.words.push_back(self.sample());
-        self.words.pop_front();
+    pub fn get_history(&self, i: usize) -> &String {
+        self.history.get(i).unwrap()
     }
 
-    pub fn get_words(&self) -> VecDeque<&'a str> {
+    pub fn advance(&mut self, entry: &str) {
+        self.history.push(entry.to_owned());
+        if self.position() == self.words.width() {
+            self.words.advance();
+            self.history.clear();
+        }
+    }
+
+    pub fn get_words(&self) -> word_queue::WordQueue {
         self.words.clone()
-    }
-
-    fn display_string(&self) -> String {
-        self.words
-            .clone()
-            .into_iter()
-            .collect::<Vec<&str>>()
-            .join(" ")
     }
 }

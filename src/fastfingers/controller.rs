@@ -12,13 +12,10 @@ pub fn on_edit(
     let mut new_contents = contents;
     if !contents.is_empty() {
         let input: char = contents.chars().last().unwrap();
-        match input {
-            ' ' => {
-                new_contents = "";
-                model.advance();
-            }
-            _ => (),
+        if input == ' ' {
+            new_contents = "";
+            model.advance(contents.trim());
         }
     }
-    view::refresh(model, siv, new_contents);
+    view::refresh(model, siv, &new_contents);
 }
