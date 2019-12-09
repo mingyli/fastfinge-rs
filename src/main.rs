@@ -1,30 +1,33 @@
+#[macro_use]
+extern crate lazy_static;
+
 use cursive::traits::*;
 use cursive::views::{Dialog, DummyView, EditView, LinearLayout, TextView};
 use cursive::Cursive;
+use std::fs::File;
+use std::io::{self, BufRead, BufReader};
 
 mod fastfingers;
+use fastfingers::{controller, model, view};
 
-fn main() {
-    let lexicon: Vec<String> = vec![
-        "the", "quick", "brown", "fox", "jumps", "over", "the", "lazy", "dog",
-    ]
-    .iter()
-    .cloned()
-    .map(String::from)
-    .collect();
-    let mut model: fastfingers::model::Model = fastfingers::model::Model::new()
-        .with_lexicon(&lexicon)
-        .with_width(10);
+fn get_lexicon<R: BufRead>(reader: &mut R) -> io::Result<Vec<String>> {
+    Ok(reader.lines().filter_map(Result::ok).collect())
+}
+
+fn main() -> io::Result<()> {
+    let file = File::open("./input/top1000.txt")?;
+    let mut reader = BufReader::new(file);
+    let lexicon = get_lexicon(&mut reader)?;
+    let mut model: model::Model =
+        model::Model::new().with_lexicon(&lexicon).with_width(8);
 
     let mut siv: Cursive = Cursive::default();
-    let display = TextView::new(fastfingers::view::render_display(&model, &""))
+    let display = TextView::new(view::get_styled_display(&model, ""))
         .with_id("display")
         .fixed_size((0, 2));
     let entry = EditView::new()
         .on_edit_mut(move |siv: &mut cursive::Cursive, contents, _cursor| {
-            fastfingers::controller::on_edit(
-                &mut model, siv, contents, _cursor,
-            );
+            controller::on_edit(&mut model, siv, contents, _cursor);
         })
         .with_id("entry");
     let performance =
@@ -38,8 +41,9 @@ fn main() {
                 .child(performance),
         )
         .title("fastfinge-rs")
-        .fixed_width(50),
+        .fixed_width(60),
     );
 
     siv.run();
+    Ok(())
 }

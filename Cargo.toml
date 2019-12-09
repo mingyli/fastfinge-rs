@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 cursive = "0.13"
+lazy_static = "1.4.0"
 rand = "0.7"

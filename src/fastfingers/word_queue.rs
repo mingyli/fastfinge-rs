@@ -54,11 +54,7 @@ impl WordQueue {
         }
     }
 
-    pub fn len(&self) -> usize {
-        self.queue.len()
-    }
-
-    pub fn get(&self, i: usize) -> &String {
-        self.queue.get(i).unwrap()
+    pub fn as_vec(&self) -> Vec<String> {
+        self.queue.iter().cloned().collect()
     }
 }
