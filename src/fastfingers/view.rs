@@ -3,9 +3,11 @@ use cursive::utils::markup::StyledString;
 use cursive::utils::span::SpannedString;
 use cursive::views::{EditView, TextView};
 use cursive::Cursive;
+use itertools::{Itertools, Position};
 use std::cmp::Ordering;
+use std::iter::FusedIterator;
 
-use crate::fastfingers::model;
+use crate::fastfingers::model::Model;
 
 lazy_static! {
     static ref CORRECT_STYLE: Style = Style::from(Effect::Bold);
@@ -15,7 +17,10 @@ lazy_static! {
     static ref FUTURE_STYLE: Style = Style::from(Effect::Simple);
 }
 
-pub fn update(model: &model::Model, siv: &mut Cursive, current_word: &str) {
+pub fn update<I>(model: &Model<I>, siv: &mut Cursive, current_word: &str)
+where
+    I: FusedIterator<Item = String>,
+{
     siv.call_on_id("performance", |view: &mut TextView| {
         view.set_content(format!(".{}.", current_word));
     });
@@ -95,28 +100,47 @@ fn get_styled_string(
     styled_words
         .chunks(row_width)
         .map(|chunk| {
-            chunk
-                .iter()
-                .fold(SpannedString::new(), |mut acc, styled_word| {
-                    acc.append(styled_word.clone());
-                    acc.append(" ");
+            chunk.iter().with_position().fold(
+                SpannedString::new(),
+                |mut acc, positioned_styled_word| {
+                    match positioned_styled_word {
+                        Position::First(word) | Position::Only(word) => {
+                            acc.append(word.clone());
+                        }
+                        Position::Middle(word) | Position::Last(word) => {
+                            acc.append(" ");
+                            acc.append(word.clone());
+                        }
+                    }
                     acc
-                })
+                },
+            )
         })
-        .fold(SpannedString::new(), |mut acc, row| {
-            acc.append(row);
-            acc.append("\n");
+        .with_position()
+        .fold(SpannedString::new(), |mut acc, positioned_row| {
+            match positioned_row {
+                Position::First(row) | Position::Only(row) => {
+                    acc.append(row);
+                }
+                Position::Middle(row) | Position::Last(row) => {
+                    acc.append("\n");
+                    acc.append(row);
+                }
+            }
             acc
         })
 }
 
-pub fn get_styled_display(
-    model: &model::Model,
+pub fn get_styled_display<I>(
+    model: &Model<I>,
     current_word: &str,
-) -> StyledString {
+) -> StyledString
+where
+    I: FusedIterator<Item = String>,
+{
     let words = model.get_words();
     let history = model.get_history();
-    get_styled_string(&words, &history, current_word, model.width())
+    get_styled_string(&words, &history, current_word, crate::PANEL_WIDTH)
 }
 
 #[cfg(test)]
@@ -153,15 +177,12 @@ mod tests {
         expected.append(" ");
         expected.append(SpannedString::styled("bl", *CORRECT_STYLE));
         expected.append(SpannedString::styled("ack", *INCORRECT_STYLE));
-        expected.append(" ");
         expected.append("\n");
         expected.append(SpannedString::styled("qu", *CORRECT_STYLE));
         expected.append(SpannedString::styled("artz", *CURRENT_STYLE));
         expected.append(" ");
         expected.append(SpannedString::styled("judge", *FUTURE_STYLE));
         expected.append(SpannedString::styled("", *FUTURE_STYLE));
-        expected.append(" ");
-        expected.append("\n");
         assert_eq!(styled_string, expected);
     }
 }
