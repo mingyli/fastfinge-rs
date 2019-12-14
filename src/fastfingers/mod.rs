@@ -1,4 +1,10 @@
+pub mod consts;
 pub mod controller;
-pub mod model;
+mod model;
 mod peeking;
+mod performance;
 pub mod view;
+
+pub use model::Model;
+pub use performance::PerformanceMonitor;
+pub use view::ViewBuilder;

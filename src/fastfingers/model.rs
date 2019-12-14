@@ -2,6 +2,7 @@ use std::collections::VecDeque;
 use std::iter;
 use std::iter::FusedIterator;
 
+use super::consts;
 use super::peeking::PeekingFoldWhileTrait;
 
 type Row = Vec<String>;
@@ -21,7 +22,7 @@ where
         let mut sampler = it.peekable();
         Model {
             words: iter::repeat_with(|| Model::make_row(&mut sampler))
-                .take(crate::PANEL_ROWS)
+                .take(consts::PANEL_ROWS)
                 .collect::<VecDeque<Row>>(),
             history: Vec::new(),
             sampler,
@@ -50,6 +51,11 @@ where
         self.words.iter().flatten().cloned().collect()
     }
 
+    pub fn get_current_word(&self) -> Option<String> {
+        let i = self.history.len();
+        self.get_words().get(i).map(|word| word.to_owned())
+    }
+
     fn first_row(&self) -> &Row {
         self.words.front().unwrap()
     }
@@ -62,9 +68,8 @@ where
         it.peeking_fold_while(Vec::new(), |mut acc, (curr, peek)| {
             acc.push(curr.clone());
             let next = peek.expect("The provided sampler should not end.");
-            let current_width =
-                acc.iter().map(String::len).sum::<usize>() + acc.len();
-            if current_width + next.len() > crate::PANEL_WIDTH {
+            let current_width = acc.iter().map(String::len).sum::<usize>() + acc.len();
+            if current_width + next.len() > consts::PANEL_WIDTH {
                 Err(acc)
             } else {
                 Ok(acc)

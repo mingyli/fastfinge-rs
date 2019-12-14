@@ -1,10 +1,6 @@
 use std::iter::Peekable;
 
-pub fn peeking_fold_while<I, B, F>(
-    iter: &mut Peekable<I>,
-    init: B,
-    mut f: F,
-) -> Result<B, B>
+pub fn peeking_fold_while<I, B, F>(iter: &mut Peekable<I>, init: B, mut f: F) -> Result<B, B>
 where
     I: Iterator,
     F: FnMut(B, (&I::Item, Option<&I::Item>)) -> Result<B, B>,
@@ -38,23 +34,19 @@ mod tests {
     #[test]
     fn test_infinite_stream() {
         let mut it = (0..).peekable();
-        let result = peeking_fold_while(
-            &mut it,
-            Vec::new(),
-            |mut acc, (&curr, peek)| {
-                acc.push(curr);
-                match peek {
-                    Some(next) => {
-                        if acc.iter().sum::<u32>() + next > 20 {
-                            Err(acc)
-                        } else {
-                            Ok(acc)
-                        }
+        let result = peeking_fold_while(&mut it, Vec::new(), |mut acc, (&curr, peek)| {
+            acc.push(curr);
+            match peek {
+                Some(next) => {
+                    if acc.iter().sum::<u32>() + next > 20 {
+                        Err(acc)
+                    } else {
+                        Ok(acc)
                     }
-                    None => Ok(acc),
                 }
-            },
-        );
+                None => Ok(acc),
+            }
+        });
         assert_eq!(result, Err(vec![0, 1, 2, 3, 4, 5]));
         assert_eq!(it.next(), Some(6));
     }
@@ -62,20 +54,19 @@ mod tests {
     #[test]
     fn test_iter_consumed() {
         let mut it = (0..4).peekable();
-        let result =
-            it.peeking_fold_while(Vec::new(), |mut acc, (&curr, peek)| {
-                acc.push(curr);
-                match peek {
-                    Some(next) => {
-                        if acc.iter().sum::<u32>() + next > 20 {
-                            Err(acc)
-                        } else {
-                            Ok(acc)
-                        }
+        let result = it.peeking_fold_while(Vec::new(), |mut acc, (&curr, peek)| {
+            acc.push(curr);
+            match peek {
+                Some(next) => {
+                    if acc.iter().sum::<u32>() + next > 20 {
+                        Err(acc)
+                    } else {
+                        Ok(acc)
                     }
-                    None => Ok(acc),
                 }
-            });
+                None => Ok(acc),
+            }
+        });
         assert_eq!(result, Ok(vec![0, 1, 2, 3]));
         assert_eq!(it.next(), None);
     }
