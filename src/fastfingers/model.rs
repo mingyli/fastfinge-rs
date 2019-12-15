@@ -78,3 +78,63 @@ where
         .unwrap_or_else(|acc| acc)
     }
 }
+
+pub struct ModelBuilder<I>
+where
+    I: FusedIterator<Item = String>,
+{
+    word_stream: Option<I>,
+}
+
+impl<I> ModelBuilder<I>
+where
+    I: FusedIterator<Item = String>,
+{
+    pub fn new() -> ModelBuilder<I> {
+        ModelBuilder { word_stream: None }
+    }
+
+    pub fn with_word_stream(mut self, word_stream: I) -> ModelBuilder<I> {
+        self.word_stream = Some(word_stream);
+        self
+    }
+
+    pub fn build(self) -> Model<I> {
+        Model::new(self.word_stream.unwrap())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_initial_values() {
+        let lexicon = vec![
+            "sphinx".to_string(),
+            "of".to_string(),
+            "black".to_string(),
+            "quartz".to_string(),
+        ];
+        let stream = lexicon.iter().cloned().cycle();
+        let model = ModelBuilder::new().with_word_stream(stream).build();
+        assert_eq!(model.get_history().len(), 0);
+        assert_eq!(model.get_current_word(), Some("sphinx".to_string()));
+    }
+
+    #[test]
+    fn test_register() {
+        let lexicon = vec![
+            "sphinx".to_string(),
+            "of".to_string(),
+            "black".to_string(),
+            "quartz".to_string(),
+        ];
+        let stream = lexicon.iter().cloned().cycle();
+        let mut model = ModelBuilder::new().with_word_stream(stream).build();
+        model.register("sphx");
+        assert_eq!(model.get_history().len(), 1);
+        assert_eq!(model.get_history().first(), Some(&"sphx".to_string()));
+        assert_eq!(model.get_current_word(), Some("of".to_string()));
+    }
+}

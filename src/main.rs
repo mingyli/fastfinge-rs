@@ -15,7 +15,7 @@ use cursive::Cursive;
 mod fastfingers;
 use fastfingers::consts;
 use fastfingers::controller;
-use fastfingers::Model;
+use fastfingers::ModelBuilder;
 use fastfingers::PerformanceMonitor;
 use fastfingers::ViewBuilder;
 
@@ -36,15 +36,16 @@ fn main() -> io::Result<()> {
             .collect::<Vec<String>>()
     })
     .flatten();
-    let model = Model::new(word_stream);
+    let model = ModelBuilder::new().with_word_stream(word_stream).build();
     let model_arc = Arc::new(RwLock::new(model));
 
     let performance = PerformanceMonitor::new();
     let performance_arc = Arc::new(RwLock::new(performance));
 
+    let model_on_edit_instance = model_arc.clone();
     let performance_on_edit_instance = performance_arc.clone();
     let performance_on_start_instance = performance_arc.clone();
-    let model_on_edit_instance = model_arc.clone();
+
     let view = ViewBuilder::new()
         .with_initial_words(&model_arc.clone().read().unwrap().get_words())
         .with_edit_callback(move |siv: &mut Cursive, contents, _cursor| {
@@ -71,20 +72,21 @@ fn main() -> io::Result<()> {
             siv.focus_id(consts::ENTRY).unwrap();
         })
         .build();
+
     {
         let mut siv = Cursive::default();
         siv.add_layer(view);
         siv.run();
     }
-    {
-        let performance_print_summary_instance = performance_arc.clone();
-        performance_print_summary_instance
-            .write()
-            .unwrap()
-            .end()
-            .expect("The performance monitor should not have been ended yet.");
-        let performance = performance_print_summary_instance.read().unwrap();
-        println!("{}", performance);
-    }
+
+    let performance_print_summary_instance = performance_arc.clone();
+    performance_print_summary_instance
+        .write()
+        .unwrap()
+        .end()
+        .expect("The performance monitor should not have been ended yet.");
+    let performance = performance_print_summary_instance.read().unwrap();
+    println!("{}", performance);
+
     Ok(())
 }
