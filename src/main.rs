@@ -8,6 +8,7 @@ use std::io::{self, BufRead, BufReader};
 use std::iter;
 use std::sync::Arc;
 use std::sync::RwLock;
+use std::thread;
 
 use cursive::views::{HideableView, LinearLayout, StackView};
 use cursive::Cursive;
@@ -15,6 +16,7 @@ use cursive::Cursive;
 mod fastfingers;
 use fastfingers::consts;
 use fastfingers::controller;
+use fastfingers::view;
 use fastfingers::ModelBuilder;
 use fastfingers::PerformanceMonitor;
 use fastfingers::ViewBuilder;
@@ -45,6 +47,7 @@ fn main() -> io::Result<()> {
     let model_on_edit_instance = model_arc.clone();
     let performance_on_edit_instance = performance_arc.clone();
     let performance_on_start_instance = performance_arc.clone();
+    let performance_background_instance = performance_arc.clone();
 
     let view = ViewBuilder::new()
         .with_initial_words(&model_arc.clone().read().unwrap().get_words())
@@ -75,6 +78,18 @@ fn main() -> io::Result<()> {
 
     {
         let mut siv = Cursive::default();
+
+        let cb_sink = siv.cb_sink().clone();
+        thread::spawn(move || loop {
+            let performance_iteration_instance = performance_background_instance.clone();
+            cb_sink
+                .send(Box::new(move |siv: &mut Cursive| {
+                    view::update_performance(siv, &performance_iteration_instance.read().unwrap());
+                }))
+                .unwrap();
+            thread::sleep(std::time::Duration::from_millis(50));
+        });
+
         siv.add_layer(view);
         siv.run();
     }

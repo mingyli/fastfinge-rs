@@ -5,7 +5,7 @@ pub const FAST_FINGERS: &str = "fastfinge-rs";
 pub const PANEL_WIDTH: usize = 60;
 pub const PANEL_ROWS: usize = 2;
 pub const PERFORMANCE_WIDTH: usize = 30;
-pub const PERFORMANCE_HEIGHT: usize = 4;
+pub const PERFORMANCE_HEIGHT: usize = 5;
 
 pub const INPUT_FILE: &str = "./input/top1000.txt";
 

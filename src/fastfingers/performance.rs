@@ -20,9 +20,9 @@ impl PerformanceMonitor {
         }
     }
 
-    pub fn start(&mut self) -> Result<(), PerformanceTimeError> {
+    pub fn start(&mut self) -> Result<(), PerformanceMonitorError> {
         match self.start {
-            Some(_) => Err(PerformanceTimeError),
+            Some(_) => Err(PerformanceMonitorError),
             None => {
                 self.start = Some(Instant::now());
                 Ok(())
@@ -30,9 +30,9 @@ impl PerformanceMonitor {
         }
     }
 
-    pub fn end(&mut self) -> Result<(), PerformanceTimeError> {
+    pub fn end(&mut self) -> Result<(), PerformanceMonitorError> {
         match self.end {
-            Some(_) => Err(PerformanceTimeError),
+            Some(_) => Err(PerformanceMonitorError),
             None => {
                 self.end = Some(Instant::now());
                 Ok(())
@@ -48,28 +48,31 @@ impl PerformanceMonitor {
         self.attempted
     }
 
-    pub fn accuracy(&self) -> Result<f32, ()> {
+    pub fn accuracy(&self) -> Result<f32, PerformanceMonitorError> {
         match self.attempted {
-            0 => Err(()),
+            0 => Err(PerformanceMonitorError),
             _ => Ok(self.correct as f32 / self.attempted as f32),
         }
     }
 
-    pub fn duration(&self) -> Result<std::time::Duration, ()> {
+    pub fn duration(&self) -> Result<std::time::Duration, PerformanceMonitorError> {
         match self.start {
-            Some(start) => Ok(Instant::now() - start),
-            None => Err(()),
+            Some(start) => match self.end {
+                Some(end) => Ok(end - start),
+                _ => Ok(Instant::now() - start),
+            },
+            None => Err(PerformanceMonitorError),
         }
     }
 
-    pub fn wps(&self) -> Result<f32, ()> {
+    pub fn wps(&self) -> Result<f32, PerformanceMonitorError> {
         match self.duration() {
             Ok(duration) => Ok(self.correct as f32 / duration.as_secs_f32()),
-            Err(()) => Err(()),
+            Err(_) => Err(PerformanceMonitorError),
         }
     }
 
-    pub fn wpm(&self) -> Result<f32, ()> {
+    pub fn wpm(&self) -> Result<f32, PerformanceMonitorError> {
         self.wps().map(|wps| wps * 60f32)
     }
 
@@ -90,21 +93,21 @@ impl fmt::Display for PerformanceMonitor {
             self.attempted(),
             self.accuracy().unwrap_or(0 as f32),
             self.wpm().unwrap_or(0 as f32),
-            self.duration().unwrap(),
+            self.duration().unwrap_or_default(),
         )
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct PerformanceTimeError;
+pub struct PerformanceMonitorError;
 
-impl fmt::Display for PerformanceTimeError {
+impl fmt::Display for PerformanceMonitorError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Performance monitor has already been started.")
+        write!(f, "Performance monitor error.")
     }
 }
 
-impl error::Error for PerformanceTimeError {
+impl error::Error for PerformanceMonitorError {
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
         None
     }

@@ -34,13 +34,7 @@ pub fn update<I>(
 
 pub fn update_performance(siv: &mut Cursive, performance_monitor: &PerformanceMonitor) {
     siv.call_on_id(consts::PERFORMANCE, |view: &mut TextView| {
-        view.set_content(format!(
-            "Correct: {}\nAttempted: {}\nAccuracy: {}\nWPM: {}\n",
-            performance_monitor.correct(),
-            performance_monitor.attempted(),
-            performance_monitor.accuracy().unwrap_or(0 as f32),
-            performance_monitor.wpm().unwrap_or(0 as f32),
-        ));
+        view.set_content(performance_monitor.to_string());
     });
 }
 
