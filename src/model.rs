@@ -1,14 +1,13 @@
 use std::collections::VecDeque;
 use std::iter;
-use std::iter::FusedIterator;
 
-use super::consts;
-use super::peeking::PeekingFoldWhileTrait;
+use crate::consts;
+use crate::iter::PeekingFoldWhileTrait;
 
 type Row = Vec<String>;
 
 #[derive(Debug)]
-pub struct Model<I: FusedIterator<Item = String>> {
+pub struct Model<I: Iterator<Item = String>> {
     words: VecDeque<Row>,
     history: Vec<String>,
     sampler: std::iter::Peekable<I>,
@@ -16,7 +15,7 @@ pub struct Model<I: FusedIterator<Item = String>> {
 
 impl<I> Model<I>
 where
-    I: FusedIterator<Item = String>,
+    I: Iterator<Item = String>,
 {
     pub fn new(it: I) -> Model<I> {
         let mut sampler = it.peekable();
@@ -29,8 +28,8 @@ where
         }
     }
 
-    pub fn get_history(&self) -> &Vec<String> {
-        &self.history
+    pub fn get_history(&self) -> Vec<String> {
+        self.history.clone()
     }
 
     pub fn register(&mut self, entry: &str) {
@@ -69,7 +68,7 @@ where
             acc.push(curr.clone());
             let next = peek.expect("The provided sampler should not end.");
             let current_width = acc.iter().map(String::len).sum::<usize>() + acc.len();
-            if current_width + next.len() > consts::PANEL_WIDTH {
+            if current_width + next.len() > consts::PANEL_COLS {
                 Err(acc)
             } else {
                 Ok(acc)
@@ -79,16 +78,17 @@ where
     }
 }
 
+#[derive(Default)]
 pub struct ModelBuilder<I>
 where
-    I: FusedIterator<Item = String>,
+    I: Iterator<Item = String>,
 {
     word_stream: Option<I>,
 }
 
 impl<I> ModelBuilder<I>
 where
-    I: FusedIterator<Item = String>,
+    I: Iterator<Item = String>,
 {
     pub fn new() -> ModelBuilder<I> {
         ModelBuilder { word_stream: None }

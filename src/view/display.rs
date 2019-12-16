@@ -1,27 +1,19 @@
 use itertools::{Itertools, Position};
 use std::cmp::Ordering;
-use std::iter::FusedIterator;
 
 use cursive::theme::Style;
-use cursive::traits::{Boxable, Identifiable};
 use cursive::utils::markup::StyledString;
 use cursive::utils::span::SpannedString;
-use cursive::views::{
-    Dialog, DummyView, EditView, HideableView, IdView, LinearLayout, StackView, TextView,
-};
+use cursive::views::{EditView, HideableView, LinearLayout, StackView, TextView};
 use cursive::Cursive;
 
-use super::consts;
-use super::Model;
-use super::PerformanceMonitor;
+use crate::consts;
+use crate::model::Model;
+use crate::performance::PerformanceMonitor;
 
-pub fn update<I>(
-    model: &Model<I>,
-    performance_monitor: &PerformanceMonitor,
-    siv: &mut Cursive,
-    current_word: &str,
-) where
-    I: FusedIterator<Item = String>,
+pub fn update_model_display<I>(siv: &mut Cursive, model: &Model<I>, current_word: &str)
+where
+    I: Iterator<Item = String>,
 {
     siv.call_on_id(consts::DISPLAY, |view: &mut TextView| {
         view.set_content(get_styled_display(&model, current_word));
@@ -29,10 +21,19 @@ pub fn update<I>(
     siv.call_on_id(consts::ENTRY, |view: &mut EditView| {
         let _callback = view.set_content(current_word);
     });
-    update_performance(siv, performance_monitor);
 }
 
-pub fn update_performance(siv: &mut Cursive, performance_monitor: &PerformanceMonitor) {
+pub fn update_display_on_start(siv: &mut Cursive) {
+    siv.call_on_id(consts::CORE, |view: &mut HideableView<LinearLayout>| {
+        view.unhide();
+    });
+    siv.call_on_id(consts::STACK, |view: &mut StackView| {
+        view.pop_layer();
+    });
+    siv.focus_id(consts::ENTRY).unwrap();
+}
+
+pub fn update_performance_display(siv: &mut Cursive, performance_monitor: &PerformanceMonitor) {
     siv.call_on_id(consts::PERFORMANCE, |view: &mut TextView| {
         view.set_content(performance_monitor.to_string());
     });
@@ -135,97 +136,13 @@ fn get_styled_string(
         })
 }
 
-pub fn get_styled_display<I>(model: &Model<I>, current_word: &str) -> StyledString
+fn get_styled_display<I>(model: &Model<I>, current_word: &str) -> StyledString
 where
-    I: FusedIterator<Item = String>,
+    I: Iterator<Item = String>,
 {
     let words = model.get_words();
     let history = model.get_history();
-    get_styled_string(&words, &history, current_word, consts::PANEL_WIDTH)
-}
-
-pub struct ViewBuilder<F, G>
-where
-    F: FnMut(&mut Cursive, &str, usize) + 'static,
-    G: Fn(&mut Cursive) + 'static,
-{
-    initial_words: Vec<String>,
-    edit_callback: Option<Box<F>>,
-    start_callback: Option<Box<G>>,
-}
-
-impl<F, G> ViewBuilder<F, G>
-where
-    F: FnMut(&mut Cursive, &str, usize) + 'static,
-    G: Fn(&mut Cursive) + 'static,
-{
-    pub fn new() -> ViewBuilder<F, G> {
-        ViewBuilder {
-            initial_words: Vec::new(),
-            edit_callback: None,
-            start_callback: None,
-        }
-    }
-
-    pub fn with_initial_words(mut self, words: &[String]) -> ViewBuilder<F, G> {
-        self.initial_words = words.to_vec();
-        self
-    }
-
-    pub fn with_edit_callback(mut self, edit_callback: F) -> ViewBuilder<F, G> {
-        self.edit_callback = Some(Box::new(edit_callback));
-        self
-    }
-
-    pub fn with_start_callback(mut self, start_callback: G) -> ViewBuilder<F, G> {
-        self.start_callback = Some(Box::new(start_callback));
-        self
-    }
-
-    pub fn build(self) -> IdView<StackView> {
-        let display = TextView::new(get_styled_string(
-            &self.initial_words,
-            &[],
-            "",
-            consts::PANEL_WIDTH,
-        ))
-        .with_id(consts::DISPLAY)
-        .fixed_size((consts::PANEL_WIDTH, consts::PANEL_ROWS));
-
-        let performance = TextView::empty()
-            .with_id(consts::PERFORMANCE)
-            .fixed_size((0, consts::PERFORMANCE_HEIGHT));
-        let entry = EditView::new()
-            .on_edit_mut(self.edit_callback.unwrap())
-            .with_id(consts::ENTRY);
-        StackView::new()
-            .fullscreen_layer(
-                HideableView::new(
-                    LinearLayout::horizontal()
-                        .child(Dialog::around(
-                            LinearLayout::vertical()
-                                .child(display)
-                                .child(DummyView)
-                                .child(entry),
-                        ))
-                        .child(DummyView)
-                        .child(
-                            Dialog::around(performance)
-                                .title(consts::PERFORMANCE)
-                                .fixed_width(consts::PERFORMANCE_WIDTH),
-                        ),
-                )
-                .hidden()
-                .with_id(consts::CORE),
-            )
-            .fullscreen_layer(
-                Dialog::new()
-                    .title(consts::FAST_FINGERS)
-                    .content(TextView::new("Type quickly."))
-                    .button("Start", self.start_callback.unwrap()),
-            )
-            .with_id(consts::STACK)
-    }
+    get_styled_string(&words, &history, current_word, consts::PANEL_COLS)
 }
 
 #[cfg(test)]

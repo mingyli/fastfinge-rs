@@ -1,25 +1,21 @@
-#[macro_use]
-extern crate lazy_static;
-
 use rand;
 use rand::seq::SliceRandom;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io;
+use std::io::{BufRead, BufReader};
 use std::iter;
 use std::sync::Arc;
 use std::sync::RwLock;
 use std::thread;
 
-use cursive::views::{HideableView, LinearLayout, StackView};
 use cursive::Cursive;
 
-mod fastfingers;
 use fastfingers::consts;
 use fastfingers::controller;
+use fastfingers::model::{Model, ModelBuilder};
+use fastfingers::performance::PerformanceMonitor;
 use fastfingers::view;
-use fastfingers::ModelBuilder;
-use fastfingers::PerformanceMonitor;
-use fastfingers::ViewBuilder;
+use fastfingers::view::ViewBuilder;
 
 fn get_lexicon<R: BufRead>(reader: &mut R) -> Vec<String> {
     reader.lines().filter_map(Result::ok).collect()
@@ -33,18 +29,18 @@ fn main() -> io::Result<()> {
     let mut rng = rand::thread_rng();
     let word_stream = iter::repeat_with(move || {
         lexicon
-            .choose_multiple(&mut rng, 100)
+            .choose_multiple(&mut rng, consts::SAMPLE_SIZE)
             .cloned()
             .collect::<Vec<String>>()
     })
     .flatten();
-    let model = ModelBuilder::new().with_word_stream(word_stream).build();
+    let model: Model<_> = ModelBuilder::new().with_word_stream(word_stream).build();
     let model_arc = Arc::new(RwLock::new(model));
+    let model_on_edit_instance = model_arc.clone();
+    let model_on_start_instance = model_arc.clone();
 
     let performance = PerformanceMonitor::new();
     let performance_arc = Arc::new(RwLock::new(performance));
-
-    let model_on_edit_instance = model_arc.clone();
     let performance_on_edit_instance = performance_arc.clone();
     let performance_on_start_instance = performance_arc.clone();
     let performance_background_instance = performance_arc.clone();
@@ -53,26 +49,20 @@ fn main() -> io::Result<()> {
         .with_initial_words(&model_arc.clone().read().unwrap().get_words())
         .with_edit_callback(move |siv: &mut Cursive, contents, _cursor| {
             controller::on_keypress(
+                siv,
                 &mut model_on_edit_instance.write().unwrap(),
                 &mut performance_on_edit_instance.write().unwrap(),
-                siv,
                 contents,
                 _cursor,
             );
         })
         .with_start_callback(move |siv: &mut Cursive| {
-            siv.call_on_id(consts::CORE, |view: &mut HideableView<LinearLayout>| {
-                view.unhide();
-            });
-            siv.call_on_id(consts::STACK, |view: &mut StackView| {
-                view.pop_layer();
-            });
+            controller::on_start(siv, &model_on_start_instance.read().unwrap());
             performance_on_start_instance
                 .write()
                 .unwrap()
                 .start()
                 .expect("The performance monitor should not have been started yet.");
-            siv.focus_id(consts::ENTRY).unwrap();
         })
         .build();
 
@@ -84,10 +74,15 @@ fn main() -> io::Result<()> {
             let performance_iteration_instance = performance_background_instance.clone();
             cb_sink
                 .send(Box::new(move |siv: &mut Cursive| {
-                    view::update_performance(siv, &performance_iteration_instance.read().unwrap());
+                    view::update_performance_display(
+                        siv,
+                        &performance_iteration_instance.read().unwrap(),
+                    );
                 }))
                 .unwrap();
-            thread::sleep(std::time::Duration::from_millis(50));
+            thread::sleep(std::time::Duration::from_millis(
+                consts::PERFORMANCE_REFRESH_MS,
+            ));
         });
 
         siv.add_layer(view);

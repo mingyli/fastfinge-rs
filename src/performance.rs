@@ -2,7 +2,7 @@ use std::error;
 use std::fmt;
 use std::time::Instant;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct PerformanceMonitor {
     start: Option<Instant>,
     end: Option<Instant>,
@@ -91,8 +91,8 @@ impl fmt::Display for PerformanceMonitor {
             "Correct: {}\nAttempted: {}\nAccuracy: {}\nWPM: {}\nDuration: {:?}",
             self.correct(),
             self.attempted(),
-            self.accuracy().unwrap_or(0 as f32),
-            self.wpm().unwrap_or(0 as f32),
+            self.accuracy().unwrap_or_default(),
+            self.wpm().unwrap_or_default(),
             self.duration().unwrap_or_default(),
         )
     }
